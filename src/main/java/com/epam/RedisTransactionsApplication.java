@@ -3,6 +3,7 @@ package com.epam;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,7 @@ class MessageConsumer {
     Map<String, String> flags = client.hgetAll(dto.getRequestId());
     boolean completed = flags.entrySet().stream().allMatch(e -> "1".equals(e.getValue()));
     if (completed) {
-      log.info("completed request {} in stream {} [{}]", dto.getRequestId(),
+      log.info("completed request {} task #{} [{}]", dto.getRequestId(),
           dto.getTaskToComplete(), Thread.currentThread().toString());
       Long hdel = client.hdel(dto.getRequestId(),
           "flag_0",
@@ -50,7 +51,7 @@ class MessageConsumer {
         log.info("WE SENDING MESSAGE ONCE!!!!!!!!");
       }
     }
-    log.info("stream {} updated flags {}", dto.getRequestId(), flags);
+    log.info("task #{} updated flags {}", dto.getRequestId(), flags);
   }
 
 }
@@ -69,7 +70,7 @@ public class RedisTransactionsApplication implements CommandLineRunner {
 
   @Override
   public void run(String... args) throws Exception {
-    String requestId = "flags#" + "somekey";
+    String requestId = "flags#" + ThreadLocalRandom.current().nextInt();
     Jedis jedis = new Jedis();
     for (int i = 0; i < 8; i++) {
       jedis.hset(requestId, "flag_" + i, "0");
@@ -84,9 +85,7 @@ public class RedisTransactionsApplication implements CommandLineRunner {
   private Runnable getLambda(String requestId, int taskToComplete) {
     return () -> {
       try {
-        int millis = 1000; // ThreadLocalRandom.current().nextInt(1000, 10000);
-        log.info("thread {} sleeps for {}", taskToComplete, millis);
-        Thread.sleep(millis);
+        Thread.sleep(1000);
       } catch (InterruptedException e) {
         log.error("cannot sleep", e);
       }
